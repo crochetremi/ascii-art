@@ -339,15 +339,15 @@ function bindEvents() {
         state,
         cache,
         cacheSignature,
-        onProgress: (pct) => {
+        onProgress: (pct, label) => {
           el.progressFill.style.width = `${pct}%`;
-          el.progressText.textContent = `Rendu en cours… ${pct}%`;
+          el.progressText.textContent = label || `Encodage MP4… ${pct}%`;
         },
       });
       if (res.cancelled) {
         showToast('Export vidéo annulé.');
       } else {
-        showToast(`Vidéo prête : ${res.filename}`);
+        showToast(`MP4 prêt (${res.engine}) : ${res.filename}`);
       }
     } catch (err) {
       showToast(`Erreur export : ${err.message}`);
