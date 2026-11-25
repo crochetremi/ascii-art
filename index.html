@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASCII Studio — Générateur d'ASCII Art Python Animé</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Polices Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            studio: {
+              bg: '#09090d',
+              card: '#111118',
+              panel: '#161621',
+              border: '#242436',
+              accent: '#8b5cf6',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Styles complémentaires pour le rendu terminal, les scrollbars et le slider */
+    body {
+      background-color: #09090d;
+      color: #f4f4f8;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    /* Scrollbars discrètes */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0e0e14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2a2a3d;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3d3d58;
+    }
+
+    /* Slider personnalisé */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 9999px;
+      background: #242436;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 9999px;
+      background: #a78bfa;
+      border: 2px solid #09090d;
+      margin-top: -6px;
+      box-shadow: 0 0 12px rgba(167, 139, 250, 0.45);
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.12);
+      background: #c4b5fd;
+    }
+
+    /* Effet de lueur douce sur le texte du terminal */
+    .terminal-glow {
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.14);
+    }
+
+    /* Animation du curseur terminal */
+    @keyframes blinkCursor {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    .cursor-blink {
+      animation: blinkCursor 0.9s infinite;
+    }
+
+    /* Coloration syntaxique légère pour l'aperçu du code Python */
+    .py-kw { color: #c084fc; font-weight: 500; }
+    .py-fn { color: #60a5fa; }
+    .py-str { color: #34d399; }
+    .py-num { color: #fbbf24; }
+    .py-com { color: #6b7280; font-style: italic; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-violet-500/30 selection:text-violet-200">
+
+  <!-- En-tête principal -->
+  <header class="sticky top-0 z-30 border-b border-studio-border/80 bg-studio-bg/85 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 p-[1px] shadow-lg shadow-violet-500/20">
+          <div class="w-full h-full rounded-[11px] bg-studio-card flex items-center justify-center font-mono font-bold text-lg text-violet-300">
+            &gt;_
+          </div>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            ASCII Studio
+            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-violet-500/15 text-violet-300 border border-violet-500/25">
+              Python 3 Natif
+            </span>
+          </h1>
+          <p class="text-xs text-zinc-400">Crée tes animations ASCII art pour le terminal &amp; TikTok</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="btnHeaderCopy" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium bg-studio-panel hover:bg-zinc-800 text-zinc-200 border border-studio-border transition active:scale-95">
+          <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span class="hidden sm:inline">Copier .py</span>
+        </button>
+        <button id="btnHeaderDownload" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-lg shadow-violet-600/25 transition active:scale-95">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 10l5 5 5-5M12 15V3"></path>
+          </svg>
+          <span>Télécharger .py</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenu principal en 2 colonnes -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+    <!-- COLONNE GAUCHE : Contrôles & Éditeur -->
+    <section class="lg:col-span-5 flex flex-col gap-5">
+
+      <!-- 1. Modèles prêts à l'emploi -->
+      <div class="bg-studio-card border border-studio-border rounded-2xl p-4 sm:p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-3.5">
+          <h2 class="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-violet-400"></span>
+            Modèles prêts à l'emploi
+          </h2>
+          <span class="text-[11px] text-zinc-500">5 modèles</span>
+        </div>
+
+        <div id="presetGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2.5">
+          <!-- Généré dynamiquement par JS -->
+        </div>
+      </div>
+
+      <!-- 2. Éditeur ASCII -->
+      <div class="bg-studio-card border border-studio-border rounded-2xl p-4 sm:p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h2 class="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            Éditeur ASCII
+          </h2>
+          <div class="flex items-center gap-2 text-[11px] text-zinc-400">
+            <span id="artStats" class="font-mono bg-studio-panel px-2 py-0.5 rounded-md border border-studio-border">0 lig.</span>
+            <button id="btnClearArt" type="button" class="px-2 py-0.5 rounded-md bg-studio-panel hover:bg-red-500/20 hover:text-red-300 border border-studio-border transition">
+              Effacer
+            </button>
+          </div>
+        </div>
+
+        <!-- Barre d'insertion rapide de symboles mignons -->
+        <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
+          <span class="text-[11px] text-zinc-500 mr-1">Symboles :</span>
+          <button type="button" data-symbol="★" class="sym-btn px-2.5 py-1 rounded-lg bg-studio-panel hover:bg-violet-500/20 hover:text-amber-300 border border-studio-border text-sm font-mono transition active:scale-95" title="Insérer une étoile">★</button>
+          <button type="button" data-symbol="♥" class="sym-btn px-2.5 py-1 rounded-lg bg-studio-panel hover:bg-violet-500/20 hover:text-rose-400 border border-studio-border text-sm font-mono transition active:scale-95" title="Insérer un cœur">♥</button>
+          <button type="button" data-symbol="✿" class="sym-btn px-2.5 py-1 rounded-lg bg-studio-panel hover:bg-violet-500/20 hover:text-pink-300 border border-studio-border text-sm font-mono transition active:scale-95" title="Insérer une fleur">✿</button>
+          <button type="button" data-symbol="✦" class="sym-btn px-2.5 py-1 rounded-lg bg-studio-panel hover:bg-violet-500/20 hover:text-yellow-200 border border-studio-border text-sm font-mono transition active:scale-95" title="Insérer une étincelle">✦</button>
+          <button type="button" data-symbol="♪" class="sym-btn px-2.5 py-1 rounded-lg bg-studio-panel hover:bg-violet-500/20 hover:text-cyan-300 border border-studio-border text-sm font-mono transition active:scale-95" title="Insérer une note">♪</button>
+          <button type="button" data-symbol="❄" class="sym-btn px-2.5 py-1 rounded-lg bg-studio-panel hover:bg-violet-500/20 hover:text-sky-300 border border-studio-border text-sm font-mono transition active:scale-95" title="Insérer un flocon">❄</button>
+          <button type="button" data-symbol="♡" class="sym-btn px-2.5 py-1 rounded-lg bg-studio-panel hover:bg-violet-500/20 hover:text-pink-300 border border-studio-border text-sm font-mono transition active:scale-95" title="Insérer un cœur creux">♡</button>
+          <button type="button" data-symbol="☆" class="sym-btn px-2.5 py-1 rounded-lg bg-studio-panel hover:bg-violet-500/20 hover:text-amber-200 border border-studio-border text-sm font-mono transition active:scale-95" title="Insérer une étoile creuse">☆</button>
+          <button type="button" data-symbol="❀" class="sym-btn px-2.5 py-1 rounded-lg bg-studio-panel hover:bg-violet-500/20 hover:text-fuchsia-300 border border-studio-border text-sm font-mono transition active:scale-95" title="Insérer une fleurette">❀</button>
+          <button type="button" data-symbol="✨" class="sym-btn px-2.5 py-1 rounded-lg bg-studio-panel hover:bg-violet-500/20 hover:text-yellow-300 border border-studio-border text-sm font-mono transition active:scale-95" title="Insérer des étincelles">✨</button>
+        </div>
+
+        <textarea
+          id="asciiEditor"
+          rows="13"
+          wrap="off"
+          spellcheck="false"
+          placeholder="Colle ou dessine ton propre ASCII art ici..."
+          class="w-full rounded-xl bg-[#0b0b10] border border-studio-border focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none p-3.5 font-mono text-xs sm:text-[13px] leading-snug text-zinc-100 whitespace-pre overflow-x-auto resize-y transition"
+        ></textarea>
+      </div>
+
+      <!-- 3. Message, Couleurs & Animation -->
+      <div class="bg-studio-card border border-studio-border rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-5">
+
+        <!-- Message personnalisé -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label for="messageInput" class="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-pink-400"></span>
+              Message personnalisé
+            </label>
+            <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+              <input id="typewriterToggle" type="checkbox" checked class="sr-only peer" />
+              <div class="w-9 h-5 bg-studio-panel border border-studio-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-300 peer-checked:after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all relative peer-checked:bg-violet-600 peer-checked:border-violet-500"></div>
+              <span class="text-xs text-zinc-300">Machine à écrire</span>
+            </label>
+          </div>
+          <input
+            id="messageInput"
+            type="text"
+            maxlength="80"
+            placeholder="Ex: Joyeux Noël ! ★"
+            class="w-full rounded-xl bg-[#0b0b10] border border-studio-border focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 transition"
+          />
+        </div>
+
+        <!-- Palette de couleurs -->
+        <div>
+          <h3 class="text-sm font-semibold text-zinc-100 mb-2.5 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            Palette de couleurs
+          </h3>
+          <div id="paletteGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <!-- Généré dynamiquement par JS -->
+          </div>
+        </div>
+
+        <!-- Type d'animation -->
+        <div>
+          <h3 class="text-sm font-semibold text-zinc-100 mb-2.5 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+            Animation
+          </h3>
+          <div id="animGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <!-- Généré dynamiquement par JS -->
+          </div>
+        </div>
+
+        <!-- Vitesse d'animation -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label for="speedSlider" class="text-sm font-semibold text-zinc-100">Vitesse d'animation</label>
+            <span id="speedValue" class="font-mono text-xs px-2.5 py-0.5 rounded-lg bg-studio-panel border border-studio-border text-violet-300">180 ms / frame</span>
+          </div>
+          <input id="speedSlider" type="range" min="70" max="550" step="10" value="180" class="w-full" />
+          <div class="flex justify-between text-[11px] text-zinc-500 mt-1">
+            <span>Rapide (70 ms)</span>
+            <span>Modéré</span>
+            <span>Doux (550 ms)</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- COLONNE DROITE : Aperçu Terminal & Export Python -->
+    <section class="lg:col-span-7 flex flex-col gap-4 lg:sticky lg:top-20">
+
+      <!-- Barre d'onglets Aperçu / Code Python -->
+      <div class="bg-studio-card border border-studio-border rounded-2xl p-2 flex flex-wrap items-center justify-between gap-2 shadow-xl">
+        <div class="flex items-center gap-1.5 bg-[#0b0b10] p-1 rounded-xl border border-studio-border/60 w-full sm:w-auto">
+          <button id="tabPreview" type="button" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 bg-violet-600 text-white shadow">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 17l6-6-6-6M12 19h8"></path>
+            </svg>
+            Aperçu Terminal
+          </button>
+          <button id="tabCode" type="button" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 text-zinc-400 hover:text-zinc-100">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 18l6-6-6-6M8 6l-6 6 6 6"></path>
+            </svg>
+            Script Python (.py)
+          </button>
+        </div>
+
+        <!-- Contrôles rapides de l'aperçu -->
+        <div id="previewControls" class="flex items-center gap-1.5 w-full sm:w-auto justify-end">
+          <!-- Toggle Standard / TikTok 9:16 -->
+          <div class="inline-flex items-center bg-[#0b0b10] p-1 rounded-xl border border-studio-border/60">
+            <button id="btnViewStandard" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-studio-panel text-white transition" title="Vue Standard">
+              Standard
+            </button>
+            <button id="btnViewTiktok" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-white transition flex items-center gap-1" title="Format TikTok vertical 9:16">
+              <span>9:16</span>
+              <span class="hidden sm:inline">TikTok</span>
+            </button>
+          </div>
+
+          <button id="btnPlayPause" type="button" class="p-2 rounded-xl bg-studio-panel hover:bg-zinc-800 border border-studio-border text-zinc-200 transition active:scale-95" title="Lecture / Pause">
+            <svg id="iconPause" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+              <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+            </svg>
+            <svg id="iconPlay" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"></path>
+            </svg>
+          </button>
+
+          <button id="btnReplay" type="button" class="p-2 rounded-xl bg-studio-panel hover:bg-zinc-800 border border-studio-border text-zinc-200 transition active:scale-95" title="Rejouer depuis le début">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.49 9A9 9 0 0 0 5.64 5.64L4 9m16 6l-1.64 3.36A9 9 0 0 1 3.51 15"></path>
+        <!-- Barre d'export vidéo HD directement sous le terminal -->
+        <div class="w-full mt-5 p-4 rounded-2xl bg-[#11111a] border border-studio-border/90 flex flex-col gap-3.5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <!-- Sélecteur de durée -->
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs font-semibold text-zinc-300">Durée :</span>
+              <div id="durationSelector" class="inline-flex items-center gap-1 bg-[#0b0b10] p-1 rounded-xl border border-studio-border/70">
+                <button type="button" data-duration="5" class="dur-btn px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-400 hover:text-white transition">5s</button>
+                <button type="button" data-duration="8" class="dur-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-violet-600 text-white shadow transition">8s</button>
+                <button type="button" data-duration="10" class="dur-btn px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-400 hover:text-white transition">10s</button>
+                <button type="button" data-duration="15" class="dur-btn px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-400 hover:text-white transition">15s</button>
+              </div>
+              <span id="videoSpecBadge" class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] bg-studio-panel text-zinc-400 border border-studio-border">
+                1280×720 • 30 FPS
+              </span>
+            </div>
+
+            <!-- Bouton principal Télécharger la vidéo -->
+            <button id="btnDownloadVideo" type="button" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-gradient-to-r from-fuchsia-600 via-violet-600 to-indigo-600 hover:from-fuchsia-500 hover:via-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-fuchsia-600/25 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M5 18h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z"></path>
+              </svg>
+              <span id="btnDownloadVideoLabel">Télécharger la vidéo</span>
+            </button>
+          </div>
+
+          <!-- Barre de progression en temps réel (affichée pendant l'enregistrement) -->
+          <div id="videoProgressBox" class="hidden flex-col gap-2 pt-2.5 border-t border-studio-border/70">
+            <div class="flex items-center justify-between gap-2 text-xs">
+              <div class="flex items-center gap-2 text-zinc-200 font-medium">
+                <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                <span id="videoProgressStatus">Enregistrement vidéo en cours...</span>
+              </div>
+              <div class="flex items-center gap-2.5">
+                <span id="videoProgressPercent" class="font-mono font-semibold text-violet-300">0%</span>
+                <button id="btnCancelVideo" type="button" class="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 transition active:scale-95">
+                  Annuler
+                </button>
+              </div>
+            </div>
+            <div class="w-full h-2 rounded-full bg-[#09090d] border border-studio-border/80 overflow-hidden">
+              <div id="videoProgressBar" class="h-full w-0 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 transition-[width] duration-75"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Canvas HD hors-écran dédié à l'enregistrement vidéo -->
+        <canvas id="videoRenderCanvas" class="hidden"></canvas>
+
+        <!-- Petit conseil d'utilisation sous le terminal -->
+        <p class="mt-3 text-xs text-zinc-500 text-center">
+          Astuce : bascule en <strong class="text-zinc-300">9:16 TikTok</strong> pour exporter directement une vidéo verticale 720×1280 prête à poster.
+        </p>
+      </div>
+
+      <!-- PANNEAU 2 : Script Python (.py) -->
+      <div id="panelCode" class="hidden bg-studio-card border border-studio-border rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+        <div class="px-4 sm:px-5 py-3.5 bg-[#14141e] border-b border-studio-border flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span id="codeFilenameBadge" class="font-mono text-xs sm:text-sm font-semibold text-violet-300">ascii_sapin.py</span>
+              <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
+                0 dépendance
+              </span>
+            </div>
+            <p class="text-[11px] text-zinc-400 mt-0.5">
+              Lance avec <code class="font-mono text-zinc-200 bg-studio-bg px-1.5 py-0.5 rounded">python3 ascii_sapin.py</code> (Windows, macOS, Linux)
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="btnCodeCopy" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-studio-panel hover:bg-zinc-800 text-zinc-100 border border-studio-border transition active:scale-95">
+              <svg class="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span id="copyBtnLabel">Copier le script</span>
+            </button>
+            <button id="btnCodeDownload" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white transition active:scale-95">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 10l5 5 5-5M12 15V3"></path>
+              </svg>
+              Télécharger (.py)
+            </button>
+          </div>
+        </div>
+
+        <div class="p-4 sm:p-5 bg-[#0a0a0f] overflow-auto max-h-[560px]">
+          <pre id="pythonCodePreview" class="font-mono text-xs leading-relaxed text-zinc-200 whitespace-pre"></pre>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Notification Toast (remplace alert()) -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    /**
+     * =========================================================================
+     * ASCII STUDIO — Logique d'aperçu en direct & Générateur de script Python
+     * =========================================================================
+     * Architecture :
+     * - PRESETS : 5 modèles (Sapin, Chat, Cœur, Bouquet, Libre) soigneusement alignés.
+     * - PALETTES : 7 palettes RGB (identiques entre l'aperçu Web et les codes ANSI TrueColor Python).
+     * - ANIMATIONS : 4 modes (Scintillement, Vague Arc-en-ciel, Apparition + Scintillement, Pulsation).
+     * - Moteur de coloration déterministe partagé conceptuellement entre JS et le script Python généré.
+     */
+
+    // -------------------------------------------------------------------------
+    // 1. DÉFINITION DES MODÈLES (PRESETS)
+    // -------------------------------------------------------------------------
+    const PRESETS = {
+      tree: {
+        id: 'tree',
+        slug: 'sapin',
+        name: 'Sapin de Noël',
+        icon: '🎄',
+        filename: 'ascii_sapin.py',
+        message: 'Joyeux Noël ! ★',
+        art: [
+          '             ★',
+          '            /|\\',
+          '           /*|o\\',
+          '          /o|*|@\\',
+          '         /*|o|*|o\\',
+          '        /@|*|o|*|@\\',
+          '       /*|o|*|@|*|o\\',
+          '      /o|@|*|o|*|@|*\\',
+          '     /*|o|*|@|*|o|*|o\\',
+          '    /@|*|o|*|@|*|o|*|@\\',
+          '   /___________________\\',
+          '           |   |',
+          '      ❄    |___|    ❄',
+          '   [+*+]  ~~~~~~~  [*+*]'
+        ].join('\n')
+      },
+      cat: {
+        id: 'cat',
+        slug: 'chat',
+        name: 'Chat mignon',
+        icon: '🐱',
+        filename: 'ascii_chat.py',
+        message: 'Miaou ~ ♥',
+        art: [
+          '       ✦         ♥         ✦',
+          '           /\\_____/\\',
+          '          /  o   o  \\      ✦',
+          '         ( ==  ^  == )',
+          '          )   \\_/   (',
+          '         (           )  __',
+          '        ( (  )   (  ) )/  \\',
+          '       (__(__)___(__)__)__/',
+          '            ~  ♪  ~'
+        ].join('\n')
+      },
+      heart: {
+        id: 'heart',
+        slug: 'coeur',
+        name: 'Cœur',
+        icon: '💖',
+        filename: 'ascii_coeur.py',
+        message: 'Pour toi ♥',
+        art: [
+          '       ✦   .:::.   .:::.   ✦',
+          '         .:::::::.:::::::.',
+          '        :::::::♥:::♥:::::::',
+          '        :::::::::♥:::::::::',
+          '      ✦  \':::::::::::::::\'  ✦',
+          '           \':::::::::::\'',
+          '             \':::::::\'',
+          '               \':::\'',
+          '                 \'',
+          '             ✦   ♥   ✦'
+        ].join('\n')
+      },
+      bouquet: {
+        id: 'bouquet',
+        slug: 'bouquet',
+        name: 'Bouquet de fleurs',
+        icon: '💐',
+        filename: 'ascii_bouquet.py',
+        message: 'Des fleurs pour toi ✿',
+        art: [
+          '          ✦     ✿     ✦',
+          '            .--(@)--.',
+          '       ✿   (  * ✿ *  )   ✿',
+          '     .(@).  \'--( )--\'  .(@).',
+          '    ( * * )   \\ | /   ( * * )',
+          '     \'---\'  \\  \\|/  /  \'---\'',
+          '        \\    \\ \\|/ /    /',
+          '         \\    \\\\|//    /',
+          '          \\____\\|/____/',
+          '             (=====)',
+          '             /  ♥  \\',
+          '            /_______\\'
+        ].join('\n')
+      },
+      custom: {
+        id: 'custom',
+        slug: 'perso',
+        name: 'Libre',
+        icon: '✨',
+        filename: 'ascii_perso.py',
+        message: 'Mon ASCII Art ★',
+        art: [
+          '       ✦     ★     ✦',
+          '      .-------------.',
+          '      |  TON ASCII  |',
+          '      |   ART ICI   |',
+          '      \'-------------\'',
+          '       ♥     ✿     ♪'
+        ].join('\n')
+      }
+    };
+
+    // -------------------------------------------------------------------------
+    // 2. DÉFINITION DES PALETTES DE COULEURS (RGB)
+    // -------------------------------------------------------------------------
+    const PALETTES = {
+      auto: {
+        id: 'auto',
+        name: 'Auto (Modèle)',
+        swatches: ['#34d399', '#f472b6', '#fbbf24'],
+        primary: [52, 211, 153],
+        secondary: [148, 163, 184],
+        trunk: [180, 120, 75],
+        accents: [[251, 191, 36], [244, 114, 182], [96, 165, 250], [248, 113, 113]],
+        text: [244, 244, 248]
+      },
+      christmas: {
+        id: 'christmas',
+        name: 'Noël',
+        swatches: ['#22c55e', '#ef4444', '#facc15'],
+        primary: [34, 197, 94],
+        secondary: [74, 222, 128],
+        trunk: [168, 107, 62],
+        accents: [[239, 68, 68], [250, 204, 21], [56, 189, 248], [244, 114, 182]],
+        text: [254, 240, 138]
+      },
+      romantic: {
+        id: 'romantic',
+        name: 'Romantique',
+        swatches: ['#f43f5e', '#fb7185', '#f9a8d4'],
+        primary: [244, 63, 94],
+        secondary: [251, 113, 133],
+        trunk: [219, 39, 119],
+        accents: [[255, 228, 230], [253, 164, 175], [251, 191, 36], [244, 114, 182]],
+        text: [253, 164, 175]
+      },
+      pastel: {
+        id: 'pastel',
+        name: 'Pastel',
+        swatches: ['#f9a8d4', '#a5f3fc', '#fde68a'],
+        primary: [196, 181, 253],
+        secondary: [165, 243, 252],
+        trunk: [253, 186, 116],
+        accents: [[249, 168, 212], [253, 230, 138], [167, 243, 208], [147, 197, 253]],
+        text: [245, 208, 254]
+      },
+      neon: {
+        id: 'neon',
+        name: 'Néon Cyber',
+        swatches: ['#22d3ee', '#e879f9', '#facc15'],
+        primary: [34, 211, 238],
+        secondary: [168, 85, 247],
+        trunk: [232, 121, 249],
+        accents: [[250, 204, 21], [244, 63, 94], [52, 211, 153], [232, 121, 249]],
+        text: [103, 232, 249]
+      },
+      rainbow: {
+        id: 'rainbow',
+        name: 'Arc-en-ciel',
+        swatches: ['#f87171', '#facc15', '#60a5fa'],
+        primary: [96, 165, 250],
+        secondary: [192, 132, 252],
+        trunk: [251, 146, 60],
+        accents: [[248, 113, 113], [250, 204, 21], [52, 211, 153], [96, 165, 250], [232, 121, 249]],
+        text: [254, 240, 138]
+      },
+      matrix: {
+        id: 'matrix',
+        name: 'Vert Matrix',
+        swatches: ['#16a34a', '#4ade80', '#dcfce7'],
+        primary: [34, 197, 94],
+        secondary: [22, 163, 74],
+        trunk: [21, 128, 61],
+        accents: [[187, 247, 208], [74, 222, 128], [134, 239, 172], [240, 253, 244]],
+        text: [74, 222, 128]
+      }
+    };
+
+    // -------------------------------------------------------------------------
+    // 3. DÉFINITION DES MODES D'ANIMATION
+    // -------------------------------------------------------------------------
+    const ANIMATIONS = [
+      { id: 'twinkle', name: 'Scintillement', desc: 'Les ornements et étincelles brillent' },
+      { id: 'rainbow', name: 'Vague Arc-en-ciel', desc: 'Dégradé fluide en diagonale' },
+      { id: 'reveal', name: 'Apparition + Scintillement', desc: 'Tracé ligne par ligne puis étincelles' },
+      { id: 'pulse', name: 'Pulsation douce', desc: 'Respiration lumineuse & clignotement' }
+    ];
+
+    // -------------------------------------------------------------------------
+    // 4. ÉTAT GLOBAL DE L'APPLICATION
+    // -------------------------------------------------------------------------
+    const state = {
+      presetId: 'tree',
+      art: PRESETS.tree.art,
+      message: PRESETS.tree.message,
+      typewriter: true,
+      paletteId: 'auto',
+      animationId: 'twinkle',
+      speedMs: 180,
+      isPlaying: true,
+      viewMode: 'standard', // 'standard' | 'tiktok'
+      activeTab: 'preview', // 'preview' | 'code'
+      frame: 0,
+      timerId: null,
+      videoDurationSec: 8,
+      isRecordingVideo: false,
+      recordingCancelled: false,
+      mediaRecorder: null,
+      recordingRafId: null
+    };
+
+    // Caractères considérés comme des ornements / étincelles animées
+    const SPARKLE_CHARS = new Set(['★', '✦', '❄', '*', 'o', '@', '+', '♪', '✿', '♥', '♡', '☆', '❀', '✨']);
+
+    // -------------------------------------------------------------------------
+    // 5. UTILITAIRES COULEUR & CALCULS (Miroir exact du script Python)
+    // -------------------------------------------------------------------------
+    function hsvToRgb(h, s, v) {
+      let r, g, b;
+      const i = Math.floor(h * 6);
+      const f = h * 6 - i;
+      const p = v * (1 - s);
+      const q = v * (1 - f * s);
+      const t = v * (1 - (1 - f) * s);
+      switch (i % 6) {
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        case 5: r = v; g = p; b = q; break;
+      }
+      return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+
+    function scaleRgb(rgb, factor) {
+      return [
+        Math.max(0, Math.min(255, Math.round(rgb[0] * factor))),
+        Math.max(0, Math.min(255, Math.round(rgb[1] * factor))),
+        Math.max(0, Math.min(255, Math.round(rgb[2] * factor)))
+      ];
+    }
+
+    /**
+     * Calcule la couleur RGB d'un caractère donné à (row, col, frame).
+     * Cette logique est reproduite à l'identique dans le script Python exporté.
+     */
+    function getCharRgb(ch, row, col, line, totalLines, frame, paletteId, presetId, animId) {
+      // Mode Vague Arc-en-ciel : dégradé diagonal fluide
+      if (animId === 'rainbow') {
+        const hue = (((col * 0.035) + (row * 0.08) - (frame * 0.07)) % 1 + 1) % 1;
+        const sat = SPARKLE_CHARS.has(ch) ? 0.65 : 0.85;
+        return hsvToRgb(hue, sat, 1.0);
+      }
+
+      const pal = PALETTES[paletteId] || PALETTES.auto;
+      const isSparkle = SPARKLE_CHARS.has(ch);
+      const hashIdx = Math.abs(row * 31 + col * 17 + frame * 7);
+      let rgb = pal.primary;
+
+      // Coloration intelligente en mode "Auto par modèle"
+      if (paletteId === 'auto') {
+        if (presetId === 'tree') {
+          if (ch === '★') {
+            rgb = (frame % 2 === 0) ? [255, 225, 77] : [255, 248, 196];
+          } else if (ch === '❄') {
+            rgb = (hashIdx % 2 === 0) ? [125, 211, 252] : [224, 242, 254];
+          } else if (isSparkle) {
+            const ornaments = [[248, 113, 113], [250, 204, 21], [56, 189, 248], [244, 114, 182], [255, 255, 255]];
+            rgb = ornaments[hashIdx % ornaments.length];
+          } else if (ch === '[' || ch === ']' || ch === '~') {
+            rgb = [239, 68, 68];
+          } else if (row >= totalLines - 3 && !line.includes('/') && !line.includes('\\')) {
+            rgb = [168, 107, 62]; // Tronc en bois
+          } else {
+            rgb = [34, 197, 94]; // Feuillage vert sapin
+          }
+        } else if (presetId === 'cat') {
+          if (ch === '♥') {
+            rgb = (frame % 2 === 0) ? [244, 63, 94] : [251, 113, 133];
+          } else if (ch === '✦' || ch === '♪') {
+            const notes = [[253, 224, 71], [249, 168, 212], [125, 211, 252]];
+            rgb = notes[hashIdx % notes.length];
+          } else if (ch === 'o') {
+            rgb = (frame % 6 === 0) ? [253, 230, 138] : [125, 211, 252];
+          } else if (ch === '^' || ch === '=') {
+            rgb = [249, 168, 212];
+          } else {
+            rgb = [245, 222, 195]; // Pelage crème chaleureux
+          }
+        } else if (presetId === 'heart') {
+          if (ch === '✦') {
+            const sp = [[253, 224, 71], [255, 241, 242], [249, 168, 212]];
+            rgb = sp[hashIdx % sp.length];
+          } else if (ch === '♥') {
+            rgb = (hashIdx % 2 === 0) ? [255, 228, 230] : [251, 113, 133];
+          } else {
+            rgb = (row % 2 === 0) ? [244, 63, 94] : [225, 29, 72];
+          }
+        } else if (presetId === 'bouquet') {
+          if (ch === '✦') {
+            const sp = [[253, 224, 71], [255, 255, 255], [249, 168, 212]];
+            rgb = sp[hashIdx % sp.length];
+          } else if (ch === '♥' || ch === '=') {
+            rgb = (frame % 2 === 0) ? [244, 114, 182] : [251, 113, 133];
+          } else if (ch === '✿' || ch === '@' || ch === '*') {
+            const blooms = [[244, 114, 182], [250, 204, 21], [192, 132, 252], [251, 113, 133]];
+            rgb = blooms[hashIdx % blooms.length];
+          } else if (row <= 5 && (ch === '(' || ch === ')' || ch === '.' || ch === '-' || ch === '\'')) {
+            rgb = [249, 168, 212]; // Pétales
+          } else if (row >= totalLines - 3) {
+            rgb = [244, 114, 182]; // Ruban du bouquet
+          } else {
+            rgb = [74, 222, 128]; // Tiges vertes
+          }
+        } else {
+          // Modèle Libre en mode Auto
+          if (isSparkle) {
+            rgb = pal.accents[hashIdx % pal.accents.length];
+          } else {
+            rgb = [167, 139, 250];
+          }
+        }
+      } else if (paletteId === 'rainbow') {
+        const hue = (((col * 0.04) + (row * 0.09)) % 1 + 1) % 1;
+        rgb = isSparkle ? pal.accents[hashIdx % pal.accents.length] : hsvToRgb(hue, 0.8, 1.0);
+      } else {
+        // Autres palettes nommées (Noël, Romantique, Pastel, Néon, Matrix)
+        if (isSparkle) {
+          rgb = pal.accents[hashIdx % pal.accents.length];
+        } else if (ch === '|' || ch === '=' || ch === '[' || ch === ']') {
+          rgb = pal.trunk;
+        } else if (ch === '(' || ch === ')' || ch === '.' || ch === '\'') {
+          rgb = pal.secondary;
+        } else {
+          rgb = pal.primary;
+        }
+      }
+
+      // Effet de pulsation douce
+      if (animId === 'pulse') {
+        const wave = 0.62 + 0.38 * Math.sin(frame * 0.45 + row * 0.25);
+        const factor = isSparkle ? (0.55 + 0.45 * Math.abs(Math.cos(frame * 0.7 + col))) : wave;
+        rgb = scaleRgb(rgb, factor);
+      }
+
+      return rgb;
+    }
+
+    function getMessageRgb(paletteId, presetId) {
+      if (paletteId === 'auto') {
+        if (presetId === 'tree') return [254, 240, 138];
+        if (presetId === 'cat') return [249, 168, 212];
+        if (presetId === 'heart') return [253, 164, 175];
+        if (presetId === 'bouquet') return [245, 208, 254];
+        return [196, 181, 253];
+      }
+      return (PALETTES[paletteId] || PALETTES.auto).text;
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. RENDU EN DIRECT DANS LE FAUX TERMINAL
+    // -------------------------------------------------------------------------
+    const asciiCanvas = document.getElementById('asciiCanvas');
+    const messageCanvas = document.getElementById('messageCanvas');
+    const frameCounter = document.getElementById('frameCounter');
+
+    function renderTerminalFrame() {
+      const lines = state.art.replace(/\r/g, '').split('\n');
+      const totalLines = lines.length;
+      const frame = state.frame;
+
+      // En mode "reveal", on affiche progressivement ligne par ligne
+      const visibleLines = (state.animationId === 'reveal')
+        ? Math.min(totalLines, frame + 1)
+        : totalLines;
+
+      let htmlLines = [];
+      for (let r = 0; r < totalLines; r++) {
+        if (r >= visibleLines) {
+          htmlLines.push(' ');
+          continue;
+        }
+        const line = lines[r];
+        let rowHtml = '';
+        for (let c = 0; c < line.length; c++) {
+          const ch = line[c];
+          if (ch === ' ') {
+            rowHtml += ' ';
+          } else {
+            const [red, green, blue] = getCharRgb(
+              ch, r, c, line, totalLines, frame,
+              state.paletteId, state.presetId, state.animationId
+            );
+            rowHtml += `<span style="color:rgb(${red},${green},${blue})">${escapeHtml(ch)}</span>`;
+          }
+        }
+        htmlLines.push(rowHtml);
+      }
+
+      asciiCanvas.innerHTML = htmlLines.join('\n');
+
+      // Rendu du message personnalisé (avec ou sans effet machine à écrire)
+      const msg = state.message || '';
+      const [mr, mg, mb] = getMessageRgb(state.paletteId, state.presetId);
+      if (!msg.trim()) {
+        messageCanvas.innerHTML = '';
+      } else if (state.typewriter) {
+        const startFrame = (state.animationId === 'reveal') ? totalLines : 0;
+        const typedCount = Math.max(0, Math.min(msg.length, frame - startFrame + 1));
+        const shown = escapeHtml(msg.slice(0, typedCount));
+        const showCursor = typedCount < msg.length;
+        messageCanvas.innerHTML = `<span style="color:rgb(${mr},${mg},${mb})">${shown}</span>${showCursor ? '<span class="cursor-blink text-zinc-400">▋</span>' : ''}`;
+      } else {
+        messageCanvas.innerHTML = `<span style="color:rgb(${mr},${mg},${mb})">${escapeHtml(msg)}</span>`;
+      }
+
+      frameCounter.textContent = `frame ${frame}`;
+    }
+
+    function startAnimationLoop() {
+      if (state.timerId) {
+        clearInterval(state.timerId);
+        state.timerId = null;
+      }
+      renderTerminalFrame();
+      if (!state.isPlaying) return;
+
+      state.timerId = setInterval(() => {
+        state.frame += 1;
+        renderTerminalFrame();
+      }, state.speedMs);
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. GÉNÉRATEUR DE SCRIPT PYTHON 3 AUTONOME
+    // -------------------------------------------------------------------------
+    function generatePythonScript() {
+      const lines = state.art.replace(/\r/g, '').split('\n');
+      const pyLines = lines.map(l => '    ' + JSON.stringify(l)).join(',\n');
+      const pyMsg = JSON.stringify(state.message || '');
+      const pal = PALETTES[state.paletteId] || PALETTES.auto;
+      const msgRgb = getMessageRgb(state.paletteId, state.presetId);
+      const delaySec = (state.speedMs / 1000).toFixed(3);
+
+      const pyAccents = '[' + pal.accents.map(c => `(${c[0]}, ${c[1]}, ${c[2]})`).join(', ') + ']';
+      const pyPrimary = `(${pal.primary[0]}, ${pal.primary[1]}, ${pal.primary[2]})`;
+      const pySecondary = `(${pal.secondary[0]}, ${pal.secondary[1]}, ${pal.secondary[2]})`;
+      const pyTrunk = `(${pal.trunk[0]}, ${pal.trunk[1]}, ${pal.trunk[2]})`;
+      const pyMsgRgb = `(${msgRgb[0]}, ${msgRgb[1]}, ${msgRgb[2]})`;
+
+      return `#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Généré avec ASCII Studio
+Lancement : python3 ${getCurrentFilename()}
+Aucune dépendance externe requise (bibliothèque standard Python uniquement).
+Appuyez sur Ctrl+C pour quitter proprement.
+"""
+
+import colorsys
+import math
+import os
+import sys
+import time
+
+# --- Configuration ---
+ART_LINES = [
+${pyLines}
+]
+
+MESSAGE = ${pyMsg}
+TYPEWRITER = ${state.typewriter ? 'True' : 'False'}
+PALETTE_ID = ${JSON.stringify(state.paletteId)}
+PRESET_ID = ${JSON.stringify(state.presetId)}
+ANIMATION_ID = ${JSON.stringify(state.animationId)}
+DELAY = ${delaySec}  # secondes par frame
+
+SPARKLE_CHARS = set("★✦❄*o@+♪✿♥♡☆❀✨")
+PAL_PRIMARY = ${pyPrimary}
+PAL_SECONDARY = ${pySecondary}
+PAL_TRUNK = ${pyTrunk}
+PAL_ACCENTS = ${pyAccents}
+MSG_RGB = ${pyMsgRgb}
+
+RESET = "\\033[0m"
+HIDE_CURSOR = "\\033[?25l"
+SHOW_CURSOR = "\\033[?25h"
+CLEAR_SCREEN = "\\033[2J\\033[H"
+HOME_CURSOR = "\\033[H"
+
+
+def ansi_rgb(r, g, b):
+    """Retourne le code couleur ANSI 24-bit (TrueColor)."""
+    return f"\\033[38;2;{r};{g};{b}m"
+
+
+def hsv_to_rgb255(h, s, v):
+    r, g, b = colorsys.hsv_to_rgb(h % 1.0, s, v)
+    return int(r * 255), int(g * 255), int(b * 255)
+
+
+def scale_rgb(rgb, factor):
+    return (
+        max(0, min(255, int(rgb[0] * factor))),
+        max(0, min(255, int(rgb[1] * factor))),
+        max(0, min(255, int(rgb[2] * factor))),
+    )
+
+
+def get_char_rgb(ch, row, col, line, total_lines, frame):
+    """Calcule la couleur RGB d'un caractère selon la palette et l'animation."""
+    if ANIMATION_ID == "rainbow":
+        hue = (col * 0.035 + row * 0.08 - frame * 0.07) % 1.0
+        sat = 0.65 if ch in SPARKLE_CHARS else 0.85
+        return hsv_to_rgb255(hue, sat, 1.0)
+
+    is_sparkle = ch in SPARKLE_CHARS
+    hash_idx = abs(row * 31 + col * 17 + frame * 7)
+    rgb = PAL_PRIMARY
+
+    if PALETTE_ID == "auto":
+        if PRESET_ID == "tree":
+            if ch == "★":
+                rgb = (255, 225, 77) if frame % 2 == 0 else (255, 248, 196)
+            elif ch == "❄":
+                rgb = (125, 211, 252) if hash_idx % 2 == 0 else (224, 242, 254)
+            elif is_sparkle:
+                ornaments = [(248, 113, 113), (250, 204, 21), (56, 189, 248), (244, 114, 182), (255, 255, 255)]
+                rgb = ornaments[hash_idx % len(ornaments)]
+            elif ch in "[]~":
+                rgb = (239, 68, 68)
+            elif row >= total_lines - 3 and "/" not in line and "\\\\" not in line:
+                rgb = (168, 107, 62)
+            else:
+                rgb = (34, 197, 94)
+        elif PRESET_ID == "cat":
+            if ch == "♥":
+                rgb = (244, 63, 94) if frame % 2 == 0 else (251, 113, 133)
+            elif ch in "✦♪":
+                notes = [(253, 224, 71), (249, 168, 212), (125, 211, 252)]
+                rgb = notes[hash_idx % len(notes)]
+            elif ch == "o":
+                rgb = (253, 230, 138) if frame % 6 == 0 else (125, 211, 252)
+            elif ch in "^=":
+                rgb = (249, 168, 212)
+            else:
+                rgb = (245, 222, 195)
+        elif PRESET_ID == "heart":
+            if ch == "✦":
+                sp = [(253, 224, 71), (255, 241, 242), (249, 168, 212)]
+                rgb = sp[hash_idx % len(sp)]
+            elif ch == "♥":
+                rgb = (255, 228, 230) if hash_idx % 2 == 0 else (251, 113, 133)
+            else:
+                rgb = (244, 63, 94) if row % 2 == 0 else (225, 29, 72)
+        elif PRESET_ID == "bouquet":
+            if ch == "✦":
+                sp = [(253, 224, 71), (255, 255, 255), (249, 168, 212)]
+                rgb = sp[hash_idx % len(sp)]
+            elif ch in "♥=":
+                rgb = (244, 114, 182) if frame % 2 == 0 else (251, 113, 133)
+            elif ch in "✿@*":
+                blooms = [(244, 114, 182), (250, 204, 21), (192, 132, 252), (251, 113, 133)]
+                rgb = blooms[hash_idx % len(blooms)]
+            elif row <= 5 and ch in "().-'":
+                rgb = (249, 168, 212)
+            elif row >= total_lines - 3:
+                rgb = (244, 114, 182)
+            else:
+                rgb = (74, 222, 128)
+        else:
+            rgb = PAL_ACCENTS[hash_idx % len(PAL_ACCENTS)] if is_sparkle else (167, 139, 250)
+    elif PALETTE_ID == "rainbow":
+        hue = (col * 0.04 + row * 0.09) % 1.0
+        rgb = PAL_ACCENTS[hash_idx % len(PAL_ACCENTS)] if is_sparkle else hsv_to_rgb255(hue, 0.8, 1.0)
+    else:
+        if is_sparkle:
+            rgb = PAL_ACCENTS[hash_idx % len(PAL_ACCENTS)]
+        elif ch in "|=[]":
+            rgb = PAL_TRUNK
+        elif ch in "().'":
+            rgb = PAL_SECONDARY
+        else:
+            rgb = PAL_PRIMARY
+
+    if ANIMATION_ID == "pulse":
+        wave = 0.62 + 0.38 * math.sin(frame * 0.45 + row * 0.25)
+        factor = (0.55 + 0.45 * abs(math.cos(frame * 0.7 + col))) if is_sparkle else wave
+        rgb = scale_rgb(rgb, factor)
+
+    return rgb
+
+
+def render_frame(frame):
+    """Construit la chaîne complète d'une frame pour un affichage fluide sans scintillement."""
+    total_lines = len(ART_LINES)
+    visible_lines = min(total_lines, frame + 1) if ANIMATION_ID == "reveal" else total_lines
+    max_width = max((len(l) for l in ART_LINES), default=0)
+
+    out = [HOME_CURSOR, "\\n"]
+    for r, line in enumerate(ART_LINES):
+        if r >= visible_lines:
+            out.append("\\033[K\\n")
+            continue
+        row_chars = ["  "]
+        for c, ch in enumerate(line):
+            if ch == " ":
+                row_chars.append(" ")
+            else:
+                red, green, blue = get_char_rgb(ch, r, c, line, total_lines, frame)
+                row_chars.append(f"{ansi_rgb(red, green, blue)}{ch}")
+        row_chars.append(f"{RESET}\\033[K\\n")
+        out.append("".join(row_chars))
+
+    # Affichage du message centré sous le dessin
+    if MESSAGE.strip():
+        out.append("\\n")
+        if TYPEWRITER:
+            start_frame = total_lines if ANIMATION_ID == "reveal" else 0
+            count = max(0, min(len(MESSAGE), frame - start_frame + 1))
+            shown = MESSAGE[:count] + ("▋" if count < len(MESSAGE) else "")
+        else:
+            shown = MESSAGE
+        pad = max(2, 2 + (max_width - len(MESSAGE)) // 2)
+        mr, mg, mb = MSG_RGB
+        out.append(f"{' ' * pad}{ansi_rgb(mr, mg, mb)}{shown}{RESET}\\033[K\\n")
+
+    return "".join(out)
+
+
+def main():
+    # Active les séquences ANSI sur Windows 10/11
+    os.system("")
+    sys.stdout.write(HIDE_CURSOR + CLEAR_SCREEN)
+    sys.stdout.flush()
+
+    frame = 0
+    try:
+        while True:
+            sys.stdout.write(render_frame(frame))
+            sys.stdout.flush()
+            frame += 1
+            time.sleep(DELAY)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        sys.stdout.write(f"{RESET}{SHOW_CURSOR}\\n")
+        sys.stdout.flush()
+
+
+if __name__ == "__main__":
+    main()
+`;
+    }
+
+    /** Coloration syntaxique légère pour l'onglet Script Python */
+    function highlightPython(code) {
+      let escaped = escapeHtml(code);
+      // Commentaires
+      escaped = escaped.replace(/(#[^\n]*)/g, '<span class="py-com">$1</span>');
+      // Mots-clés Python
+      const keywords = /\b(import|from|def|return|if|elif|else|for|in|while|try|except|finally|pass|True|False|None|and|or|not)\b/g;
+      escaped = escaped.replace(keywords, '<span class="py-kw">$1</span>');
+      // Nombres
+      escaped = escaped.replace(/\b(\d+\.\d+|\d+)\b/g, '<span class="py-num">$1</span>');
+      return escaped;
+    }
+
+    function getCurrentFilename() {
+      return (PRESETS[state.presetId] && PRESETS[state.presetId].filename) || 'ascii_animation.py';
+    }
+
+    function updatePythonView() {
+      const code = generatePythonScript();
+      const filename = getCurrentFilename();
+      document.getElementById('pythonCodePreview').innerHTML = highlightPython(code);
+      document.getElementById('codeFilenameBadge').textContent = filename;
+      document.getElementById('cmdFilename').textContent = filename;
+      document.getElementById('terminalTitle').textContent = `zsh — python3 ${filename}`;
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. INTERFACE UTILISATEUR & INTERACTIONS
+    // -------------------------------------------------------------------------
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const colors = type === 'success'
+        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200'
+        : 'bg-violet-500/15 border-violet-500/40 text-violet-200';
+      toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl border backdrop-blur-md shadow-xl text-xs sm:text-sm font-medium flex items-center gap-2 transition-all duration-300 translate-y-2 opacity-0 ${colors}`;
+      toast.innerHTML = `<span>${type === 'success' ? '✓' : '✦'}</span><span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 2400);
+    }
+
+    /** Copie fiable compatible iFrame via document.execCommand('copy') */
+    function copyPythonScript() {
+      const code = generatePythonScript();
+      try {
+        const tempArea = document.createElement('textarea');
+        tempArea.value = code;
+        tempArea.setAttribute('readonly', '');
+        tempArea.style.position = 'fixed';
+        tempArea.style.top = '-9999px';
+        tempArea.style.left = '-9999px';
+        document.body.appendChild(tempArea);
+        tempArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempArea);
+
+        const label = document.getElementById('copyBtnLabel');
+        if (label) {
+          label.textContent = 'Copié !';
+          setTimeout(() => { label.textContent = 'Copier le script'; }, 1800);
+        }
+        showToast('Script Python copié dans le presse-papiers !');
+      } catch (err) {
+        showToast('Impossible de copier automatiquement.', 'info');
+      }
+    }
+
+    /** Téléchargement direct du fichier .py */
+    function downloadPythonScript() {
+      const code = generatePythonScript();
+      const filename = getCurrentFilename();
+      const blob = new Blob([code], { type: 'text/x-python;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Fichier ${filename} téléchargé !`);
+    }
+
+    function updateArtStats() {
+      const lines = state.art.replace(/\r/g, '').split('\n');
+      const maxCols = Math.max(...lines.map(l => l.length), 0);
+      document.getElementById('artStats').textContent = `${lines.length} lig. × ${maxCols} col.`;
+    }
+
+    function renderPresetButtons() {
+      const grid = document.getElementById('presetGrid');
+      grid.innerHTML = '';
+      Object.values(PRESETS).forEach(preset => {
+        const active = state.presetId === preset.id;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition active:scale-95 ${
+          active
+            ? 'bg-violet-600/20 border-violet-500 text-white shadow-md shadow-violet-500/10'
+            : 'bg-studio-panel/70 border-studio-border text-zinc-300 hover:bg-studio-panel hover:border-zinc-600'
+        }`;
+        btn.innerHTML = `<span class="text-lg leading-none">${preset.icon}</span><span class="text-xs font-medium truncate">${preset.name}</span>`;
+        btn.addEventListener('click', () => {
+          state.presetId = preset.id;
+          state.art = preset.art;
+          state.message = preset.message;
+          state.frame = 0;
+          document.getElementById('asciiEditor').value = state.art;
+          document.getElementById('messageInput').value = state.message;
+          renderPresetButtons();
+          updateArtStats();
+          updatePythonView();
+          startAnimationLoop();
+        });
+        grid.appendChild(btn);
+      });
+    }
+
+    function renderPaletteButtons() {
+      const grid = document.getElementById('paletteGrid');
+      grid.innerHTML = '';
+      Object.values(PALETTES).forEach(pal => {
+        const active = state.paletteId === pal.id;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `flex flex-col gap-1.5 px-3 py-2 rounded-xl border text-left transition active:scale-95 ${
+          active
+            ? 'bg-violet-600/20 border-violet-500 text-white'
+            : 'bg-studio-panel/70 border-studio-border text-zinc-300 hover:bg-studio-panel hover:border-zinc-600'
+        }`;
+        const dots = pal.swatches.map(hex => `<span class="w-2.5 h-2.5 rounded-full" style="background:${hex}"></span>`).join('');
+        btn.innerHTML = `
+          <div class="flex items-center gap-1">${dots}</div>
+          <span class="text-xs font-medium truncate">${pal.name}</span>
+        `;
+        btn.addEventListener('click', () => {
+          state.paletteId = pal.id;
+          renderPaletteButtons();
+          updatePythonView();
+          renderTerminalFrame();
+        });
+        grid.appendChild(btn);
+      });
+    }
+
+    function renderAnimButtons() {
+      const grid = document.getElementById('animGrid');
+      grid.innerHTML = '';
+      ANIMATIONS.forEach(anim => {
+        const active = state.animationId === anim.id;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `flex flex-col gap-0.5 px-3 py-2.5 rounded-xl border text-left transition active:scale-95 ${
+          active
+            ? 'bg-violet-600/20 border-violet-500 text-white'
+            : 'bg-studio-panel/70 border-studio-border text-zinc-300 hover:bg-studio-panel hover:border-zinc-600'
+        }`;
+        btn.innerHTML = `
+          <span class="text-xs font-semibold">${anim.name}</span>
+          <span class="text-[11px] text-zinc-400 leading-tight">${anim.desc}</span>
+        `;
+        btn.addEventListener('click', () => {
+          state.animationId = anim.id;
+          state.frame = 0;
+          renderAnimButtons();
+          updatePythonView();
+          startAnimationLoop();
+        });
+        grid.appendChild(btn);
+      });
+    }
+
+    function setViewMode(mode) {
+      state.viewMode = mode;
+      const shell = document.getElementById('terminalShell');
+      const body = document.getElementById('terminalBody');
+      const canvas = document.getElementById('asciiCanvas');
+      const btnStd = document.getElementById('btnViewStandard');
+      const btnTik = document.getElementById('btnViewTiktok');
+      const specBadge = document.getElementById('videoSpecBadge');
+
+      if (mode === 'tiktok') {
+        btnTik.className = 'px-2.5 py-1.5 rounded-lg text-xs font-medium bg-studio-panel text-white transition flex items-center gap-1';
+        btnStd.className = 'px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-white transition';
+        shell.className = 'w-full max-w-[340px] aspect-[9/16] rounded-[28px] overflow-hidden border-2 border-zinc-700/80 bg-[#0a0a0f] shadow-[0_24px_60px_-15px_rgba(139,92,246,0.28)] flex flex-col transition-all duration-300';
+        body.className = 'p-4 flex-1 flex flex-col justify-between overflow-x-auto bg-gradient-to-b from-[#0a0a0f] via-[#0b0b12] to-[#08080c]';
+        canvas.className = 'font-mono text-[11px] sm:text-xs leading-[1.35] terminal-glow whitespace-pre select-text m-0';
+        if (specBadge) specBadge.textContent = '720×1280 • 30 FPS';
+      } else {
+        btnStd.className = 'px-2.5 py-1.5 rounded-lg text-xs font-medium bg-studio-panel text-white transition';
+        btnTik.className = 'px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-white transition flex items-center gap-1';
+        shell.className = 'w-full rounded-2xl overflow-hidden border border-zinc-700/70 bg-[#0a0a0f] shadow-[0_24px_60px_-15px_rgba(0,0,0,0.85)] flex flex-col transition-all duration-300';
+        body.className = 'p-4 sm:p-6 flex-1 flex flex-col justify-between min-h-[400px] overflow-x-auto bg-gradient-to-b from-[#0a0a0f] via-[#0b0b12] to-[#08080c]';
+        canvas.className = 'font-mono text-xs sm:text-sm leading-[1.35] terminal-glow whitespace-pre select-text m-0';
+        if (specBadge) specBadge.textContent = '1280×720 • 30 FPS';
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 8b. MOTEUR DE RENDU CANVAS HD & EXPORT VIDÉO (MediaRecorder 30 FPS)
+    // -------------------------------------------------------------------------
+
+    /** Détecte le meilleur codec vidéo supporté par le navigateur (MP4 prioritaire, puis WebM VP9/VP8). */
+    function detectBestVideoMimeType() {
+      if (typeof MediaRecorder === 'undefined') return null;
+      const candidates = [
+        { mimeType: 'video/mp4;codecs=avc1.42E01E', ext: 'mp4', label: 'MP4' },
+        { mimeType: 'video/mp4;codecs=h264', ext: 'mp4', label: 'MP4' },
+        { mimeType: 'video/mp4', ext: 'mp4', label: 'MP4' },
+        { mimeType: 'video/webm;codecs=vp9', ext: 'webm', label: 'WebM VP9' },
+        { mimeType: 'video/webm;codecs=vp8', ext: 'webm', label: 'WebM VP8' },
+        { mimeType: 'video/webm', ext: 'webm', label: 'WebM' }
+      ];
+      for (const c of candidates) {
+        if (MediaRecorder.isTypeSupported(c.mimeType)) {
+          return c;
+        }
+      }
+      return { mimeType: '', ext: 'webm', label: 'WebM' };
+    }
+
+    /** Trace un rectangle aux coins arrondis sur le contexte Canvas 2D. */
+    function drawRoundedRect(ctx, x, y, w, h, r) {
+      const radius = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.arcTo(x + w, y, x + w, y + h, radius);
+      ctx.arcTo(x + w, y + h, x, y + h, radius);
+      ctx.arcTo(x, y + h, x, y, radius);
+      ctx.arcTo(x, y, x + w, y, radius);
+      ctx.closePath();
+    }
+
+    /**
+     * Dessine une frame complète du terminal esthétique sur le Canvas HD
+     * (720×1280 pour TikTok 9:16 ou 1280×720 pour Standard 16:9).
+     */
+    function drawTerminalToCanvas(ctx, width, height, frame) {
+      const isTiktok = state.viewMode === 'tiktok';
+      const filename = getCurrentFilename();
+
+      // 1. Fond dégradé subtil + halos lumineux façon TikTok
+      const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+      bgGrad.addColorStop(0, '#07070c');
+      bgGrad.addColorStop(0.5, '#0e0b1a');
+      bgGrad.addColorStop(1, '#08080f');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      // Halos doux violet / fuchsia en arrière-plan
+      const glow1 = ctx.createRadialGradient(width * 0.2, height * 0.18, 10, width * 0.2, height * 0.18, width * 0.7);
+      glow1.addColorStop(0, 'rgba(139, 92, 246, 0.22)');
+      glow1.addColorStop(1, 'rgba(139, 92, 246, 0)');
+      ctx.fillStyle = glow1;
+      ctx.fillRect(0, 0, width, height);
+
+      const glow2 = ctx.createRadialGradient(width * 0.82, height * 0.82, 10, width * 0.82, height * 0.82, width * 0.65);
+      glow2.addColorStop(0, 'rgba(236, 72, 153, 0.16)');
+      glow2.addColorStop(1, 'rgba(236, 72, 153, 0)');
+      ctx.fillStyle = glow2;
+      ctx.fillRect(0, 0, width, height);
+
+      // 2. Dimensions de la fenêtre du terminal centrée
+      const padX = isTiktok ? 42 : 90;
+      const padY = isTiktok ? 140 : 54;
+      const winX = padX;
+      const winY = padY;
+      const winW = width - padX * 2;
+      const winH = height - padY * 2;
+      const winRadius = isTiktok ? 28 : 22;
+      const titleBarH = isTiktok ? 54 : 46;
+
+      // Ombre portée de la fenêtre
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+      ctx.shadowBlur = 45;
+      ctx.shadowOffsetY = 20;
+      drawRoundedRect(ctx, winX, winY, winW, winH, winRadius);
+      ctx.fillStyle = '#0a0a0f';
+      ctx.fill();
+      ctx.restore();
+
+      // Clip intérieur de la fenêtre terminal
+      ctx.save();
+      drawRoundedRect(ctx, winX, winY, winW, winH, winRadius);
+      ctx.clip();
+
+      // Fond intérieur du terminal
+      const termGrad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+      termGrad.addColorStop(0, '#0a0a0f');
+      termGrad.addColorStop(0.5, '#0c0c14');
+      termGrad.addColorStop(1, '#08080c');
+      ctx.fillStyle = termGrad;
+      ctx.fillRect(winX, winY, winW, winH);
+
+      // Barre de titre macOS/Linux
+      ctx.fillStyle = '#16161f';
+      ctx.fillRect(winX, winY, winW, titleBarH);
+      ctx.fillStyle = 'rgba(63, 63, 70, 0.55)';
+      ctx.fillRect(winX, winY + titleBarH - 1, winW, 1);
+
+      // Boutons rouge, jaune, vert
+      const dotY = winY + titleBarH / 2;
+      const dotStart = winX + 26;
+      const dotGap = 22;
+      const dotR = 7;
+      const dotColors = ['#ff5f56', '#ffbd2e', '#27c93f'];
+      dotColors.forEach((col, i) => {
+        ctx.beginPath();
+        ctx.arc(dotStart + i * dotGap, dotY, dotR, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+      });
+
+      // Titre centré dans la barre
+      ctx.font = `500 ${isTiktok ? 15 : 14}px "JetBrains Mono", ui-monospace, monospace`;
+      ctx.fillStyle = '#a1a1aa';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`zsh — python3 ${filename}`, winX + winW / 2, dotY);
+
+      // Badge LIVE à droite
+      ctx.beginPath();
+      ctx.arc(winX + winW - 58, dotY, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#34d399';
+      ctx.fill();
+      ctx.font = '600 12px "JetBrains Mono", ui-monospace, monospace';
+      ctx.fillStyle = '#71717a';
+      ctx.textAlign = 'left';
+      ctx.fillText('LIVE', winX + winW - 48, dotY);
+
+      // 3. Invite de commande en haut du corps
+      const bodyPadX = isTiktok ? 28 : 38;
+      const promptY = winY + titleBarH + (isTiktok ? 36 : 32);
+      const promptFontSize = isTiktok ? 15 : 15;
+      ctx.font = `600 ${promptFontSize}px "JetBrains Mono", ui-monospace, monospace`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+
+      let curX = winX + bodyPadX;
+      ctx.fillStyle = '#34d399';
+      ctx.fillText('➜ ', curX, promptY);
+      curX += ctx.measureText('➜ ').width;
+
+      ctx.fillStyle = '#22d3ee';
+      ctx.fillText('~/ascii-studio ', curX, promptY);
+      curX += ctx.measureText('~/ascii-studio ').width;
+
+      ctx.font = `400 ${promptFontSize}px "JetBrains Mono", ui-monospace, monospace`;
+      ctx.fillStyle = '#d4d4d8';
+      ctx.fillText(`$ python3 ${filename}`, curX, promptY);
+
+      // 4. Zone de rendu centrée pour l'ASCII art + message
+      const lines = state.art.replace(/\r/g, '').split('\n');
+      const totalLines = Math.max(lines.length, 1);
+      const visibleLines = (state.animationId === 'reveal')
+        ? Math.min(totalLines, frame + 1)
+        : totalLines;
+
+      // Calcul automatique de la taille de police pour ne jamais déborder
+      const footerH = 44;
+      const contentTop = promptY + 26;
+      const contentBottom = winY + winH - footerH - 16;
+      const availW = winW - bodyPadX * 2;
+      const availH = Math.max(120, contentBottom - contentTop);
+      const hasMsg = Boolean((state.message || '').trim());
+      const msgReserveH = hasMsg ? (isTiktok ? 64 : 56) : 0;
+      const artAvailH = Math.max(80, availH - msgReserveH);
+
+      // Mesure de référence avec une taille de police test (20px)
+      const testSize = 20;
+      ctx.font = `500 ${testSize}px "JetBrains Mono", ui-monospace, monospace`;
+      const charWidthAtTest = ctx.measureText('M').width;
+      const maxChars = Math.max(...lines.map(l => Array.from(l).length), 1);
+      const maxLineWidthAtTest = maxChars * charWidthAtTest;
+
+      const scaleByW = availW / Math.max(maxLineWidthAtTest, 1);
+      const lineHeightRatio = 1.35;
+      const scaleByH = artAvailH / (totalLines * testSize * lineHeightRatio);
+      const artFontSize = Math.max(10, Math.min(isTiktok ? 28 : 26, Math.floor(testSize * Math.min(scaleByW, scaleByH))));
+      const lineHeight = artFontSize * lineHeightRatio;
+
+      ctx.font = `500 ${artFontSize}px "JetBrains Mono", ui-monospace, monospace`;
+      const charW = ctx.measureText('M').width;
+      const blockW = maxChars * charW;
+      const totalBlockH = totalLines * lineHeight + (hasMsg ? msgReserveH : 0);
+
+      const startX = winX + (winW - blockW) / 2;
+      const startY = contentTop + (availH - totalBlockH) / 2 + artFontSize;
+
+      // Rendu caractère par caractère avec couleurs exactes et lueur douce
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      for (let r = 0; r < visibleLines; r++) {
+        const line = lines[r] || '';
+        const chars = Array.from(line);
+        const y = startY + r * lineHeight;
+        for (let c = 0; c < chars.length; c++) {
+          const ch = chars[c];
+          if (ch === ' ') continue;
+          const [red, green, blue] = getCharRgb(
+            ch, r, c, line, totalLines, frame,
+            state.paletteId, state.presetId, state.animationId
+          );
+          const colorStr = `rgb(${red},${green},${blue})`;
+          ctx.fillStyle = colorStr;
+          ctx.shadowColor = `rgba(${red},${green},${blue},0.45)`;
+          ctx.shadowBlur = 8;
+          ctx.fillText(ch, startX + c * charW, y);
+        }
+      }
+
+      // 5. Message personnalisé avec effet machine à écrire
+      if (hasMsg) {
+        const msg = state.message;
+        const [mr, mg, mb] = getMessageRgb(state.paletteId, state.presetId);
+        let shownText = msg;
+        let showCursor = false;
+
+        if (state.typewriter) {
+          const startFrame = (state.animationId === 'reveal') ? totalLines : 0;
+          const typedCount = Math.max(0, Math.min(msg.length, frame - startFrame + 1));
+          shownText = msg.slice(0, typedCount);
+          showCursor = typedCount < msg.length && (frame % 2 === 0);
+        }
+
+        const msgFontSize = Math.max(14, Math.min(isTiktok ? 22 : 20, artFontSize + 2));
+        ctx.font = `600 ${msgFontSize}px "JetBrains Mono", ui-monospace, monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = `rgb(${mr},${mg},${mb})`;
+        ctx.shadowColor = `rgba(${mr},${mg},${mb},0.5)`;
+        ctx.shadowBlur = 10;
+        const msgY = startY + totalLines * lineHeight + (isTiktok ? 36 : 30);
+        ctx.fillText(shownText + (showCursor ? '▋' : ''), winX + winW / 2, msgY);
+      }
+
+      // 6. Pied de fenêtre discret
+      ctx.shadowBlur = 0;
+      const footerLineY = winY + winH - footerH;
+      ctx.fillStyle = 'rgba(39, 39, 42, 0.65)';
+      ctx.fillRect(winX + bodyPadX, footerLineY, winW - bodyPadX * 2, 1);
+
+      ctx.font = '400 12px "JetBrains Mono", ui-monospace, monospace';
+      ctx.fillStyle = '#52525b';
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+      ctx.fillText('Ctrl+C pour quitter', winX + bodyPadX, footerLineY + footerH / 2);
+      ctx.textAlign = 'right';
+      ctx.fillText(`frame ${frame}`, winX + winW - bodyPadX, footerLineY + footerH / 2);
+
+      ctx.restore();
+
+      // Bordure subtile autour de la fenêtre terminal
+      drawRoundedRect(ctx, winX, winY, winW, winH, winRadius);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = isTiktok ? 'rgba(139, 92, 246, 0.45)' : 'rgba(63, 63, 70, 0.75)';
+      ctx.stroke();
+    }
+
+    function setRecordingUI(active) {
+      const btn = document.getElementById('btnDownloadVideo');
+      const label = document.getElementById('btnDownloadVideoLabel');
+      const progressBox = document.getElementById('videoProgressBox');
+      const progressBar = document.getElementById('videoProgressBar');
+      const progressPercent = document.getElementById('videoProgressPercent');
+
+      if (active) {
+        btn.disabled = true;
+        label.textContent = 'Enregistrement...';
+        progressBox.classList.remove('hidden');
+        progressBox.classList.add('flex');
+        progressBar.style.width = '0%';
+        progressPercent.textContent = '0%';
+      } else {
+        btn.disabled = false;
+        label.textContent = 'Télécharger la vidéo';
+        progressBox.classList.add('hidden');
+        progressBox.classList.remove('flex');
+      }
+    }
+
+    function cancelVideoExport() {
+      if (!state.isRecordingVideo) return;
+      state.recordingCancelled = true;
+      if (state.recordingRafId) {
+        cancelAnimationFrame(state.recordingRafId);
+        state.recordingRafId = null;
+      }
+      if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+        try {
+          state.mediaRecorder.stop();
+        } catch (_) {}
+      }
+      state.isRecordingVideo = false;
+      setRecordingUI(false);
+      showToast('Enregistrement vidéo annulé.', 'info');
+    }
+
+    /** Démarre l'enregistrement vidéo HD à 30 FPS depuis la frame 0 puis télécharge le fichier. */
+    function startVideoExport() {
+      if (state.isRecordingVideo) return;
+
+      const canvas = document.getElementById('videoRenderCanvas');
+      if (!canvas || typeof canvas.captureStream !== 'function' || typeof MediaRecorder === 'undefined') {
+        showToast('Votre navigateur ne supporte pas l’export vidéo MediaRecorder.', 'info');
+        return;
+      }
+
+      const codec = detectBestVideoMimeType();
+      if (!codec) {
+        showToast('Aucun codec vidéo compatible trouvé sur ce navigateur.', 'info');
+        return;
+      }
+
+      // Redémarre aussi l'aperçu proprement à la frame 0
+      state.frame = 0;
+      startAnimationLoop();
+
+      const isTiktok = state.viewMode === 'tiktok';
+      const width = isTiktok ? 720 : 1280;
+      const height = isTiktok ? 1280 : 720;
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      const durationMs = state.videoDurationSec * 1000;
+      const chunks = [];
+      let stream;
+      let recorder;
+
+      try {
+        // Dessine la toute première frame avant de démarrer le flux
+        drawTerminalToCanvas(ctx, width, height, 0);
+        stream = canvas.captureStream(30);
+        const options = codec.mimeType
+          ? { mimeType: codec.mimeType, videoBitsPerSecond: 5000000 }
+          : { videoBitsPerSecond: 5000000 };
+        recorder = new MediaRecorder(stream, options);
+      } catch (err) {
+        showToast('Impossible de démarrer l’enregistrement vidéo.', 'info');
+        return;
+      }
+
+      state.isRecordingVideo = true;
+      state.recordingCancelled = false;
+      state.mediaRecorder = recorder;
+      setRecordingUI(true);
+
+      const progressBar = document.getElementById('videoProgressBar');
+      const progressPercent = document.getElementById('videoProgressPercent');
+      const progressStatus = document.getElementById('videoProgressStatus');
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        // Libère proprement les pistes du flux
+        if (stream) {
+          stream.getTracks().forEach(t => t.stop());
+        }
+        state.isRecordingVideo = false;
+        state.mediaRecorder = null;
+        setRecordingUI(false);
+
+        if (state.recordingCancelled || chunks.length === 0) return;
+
+        const blobType = codec.mimeType || 'video/webm';
+        const blob = new Blob(chunks, { type: blobType });
+        const url = URL.createObjectURL(blob);
+
+        const slug = (PRESETS[state.presetId] && PRESETS[state.presetId].slug) || 'perso';
+        const formatTag = isTiktok ? 'tiktok' : 'standard';
+        const filename = `ascii-studio-${slug}-${formatTag}.${codec.ext}`;
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+        showToast(`Vidéo téléchargée : ${filename} (${codec.label} • ${width}×${height})`);
+      };
+
+      recorder.onerror = () => {
+        cancelVideoExport();
+        showToast('Erreur pendant l’encodage vidéo.', 'info');
+      };
+
+      recorder.start(100);
+      const startTime = performance.now();
+
+      function step(now) {
+        if (state.recordingCancelled) return;
+        const elapsed = now - startTime;
+        const progress = Math.min(1, elapsed / durationMs);
+        const animFrame = Math.floor(elapsed / state.speedMs);
+
+        drawTerminalToCanvas(ctx, width, height, animFrame);
+
+        const pct = Math.round(progress * 100);
+        const secShown = Math.min(state.videoDurationSec, elapsed / 1000).toFixed(1);
+        progressBar.style.width = `${pct}%`;
+        progressPercent.textContent = `${pct}%`;
+        progressStatus.textContent = `Enregistrement ${codec.label} (${secShown}s / ${state.videoDurationSec}s)...`;
+
+        if (elapsed >= durationMs) {
+          if (recorder.state !== 'inactive') {
+            recorder.stop();
+          }
+          state.recordingRafId = null;
+          return;
+        }
+        state.recordingRafId = requestAnimationFrame(step);
+      }
+
+      state.recordingRafId = requestAnimationFrame(step);
+    }
+
+    function setActiveTab(tab) {
+      state.activeTab = tab;
+      const tabPreview = document.getElementById('tabPreview');
+      const tabCode = document.getElementById('tabCode');
+      const panelPreview = document.getElementById('panelPreview');
+      const panelCode = document.getElementById('panelCode');
+      const previewControls = document.getElementById('previewControls');
+
+      if (tab === 'preview') {
+        tabPreview.className = 'flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 bg-violet-600 text-white shadow';
+        tabCode.className = 'flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 text-zinc-400 hover:text-zinc-100';
+        panelPreview.classList.remove('hidden');
+        panelCode.classList.add('hidden');
+        previewControls.classList.remove('hidden');
+      } else {
+        tabCode.className = 'flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 bg-violet-600 text-white shadow';
+        tabPreview.className = 'flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 text-zinc-400 hover:text-zinc-100';
+        panelCode.classList.remove('hidden');
+        panelPreview.classList.add('hidden');
+        previewControls.classList.add('hidden');
+        updatePythonView();
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 9. INITIALISATION & ÉCOUTEURS D'ÉVÉNEMENTS
+    // -------------------------------------------------------------------------
+    function init() {
+      const editor = document.getElementById('asciiEditor');
+      const messageInput = document.getElementById('messageInput');
+      const typewriterToggle = document.getElementById('typewriterToggle');
+      const speedSlider = document.getElementById('speedSlider');
+      const speedValue = document.getElementById('speedValue');
+
+      // Valeurs initiales
+      editor.value = state.art;
+      messageInput.value = state.message;
+      typewriterToggle.checked = state.typewriter;
+      speedSlider.value = state.speedMs;
+
+      renderPresetButtons();
+      renderPaletteButtons();
+      renderAnimButtons();
+      updateArtStats();
+      updatePythonView();
+      startAnimationLoop();
+
+      // Édition en direct de l'ASCII art
+      editor.addEventListener('input', () => {
+        state.art = editor.value;
+        updateArtStats();
+        updatePythonView();
+        renderTerminalFrame();
+      });
+
+      // Effacer l'éditeur
+      document.getElementById('btnClearArt').addEventListener('click', () => {
+        state.art = '';
+        state.presetId = 'custom';
+        editor.value = '';
+        editor.focus();
+        renderPresetButtons();
+        updateArtStats();
+        updatePythonView();
+        renderTerminalFrame();
+      });
+
+      // Insertion rapide de symboles à la position du curseur
+      document.querySelectorAll('.sym-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sym = btn.getAttribute('data-symbol');
+          const start = editor.selectionStart ?? editor.value.length;
+          const end = editor.selectionEnd ?? editor.value.length;
+          editor.value = editor.value.slice(0, start) + sym + editor.value.slice(end);
+          editor.selectionStart = editor.selectionEnd = start + sym.length;
+          editor.focus();
+          state.art = editor.value;
+          updateArtStats();
+          updatePythonView();
+          renderTerminalFrame();
+        });
+      });
+
+      // Message personnalisé
+      messageInput.addEventListener('input', () => {
+        state.message = messageInput.value;
+        if (state.typewriter) state.frame = 0;
+        updatePythonView();
+        renderTerminalFrame();
+      });
+
+      // Toggle machine à écrire
+      typewriterToggle.addEventListener('change', () => {
+        state.typewriter = typewriterToggle.checked;
+        state.frame = 0;
+        updatePythonView();
+        startAnimationLoop();
+      });
+
+      // Vitesse d'animation
+      speedSlider.addEventListener('input', () => {
+        state.speedMs = parseInt(speedSlider.value, 10);
+        speedValue.textContent = `${state.speedMs} ms / frame`;
+        updatePythonView();
+        startAnimationLoop();
+      });
+
+      // Lecture / Pause
+      document.getElementById('btnPlayPause').addEventListener('click', () => {
+        state.isPlaying = !state.isPlaying;
+        document.getElementById('iconPause').classList.toggle('hidden', !state.isPlaying);
+        document.getElementById('iconPlay').classList.toggle('hidden', state.isPlaying);
+        document.getElementById('liveDot').className = state.isPlaying
+          ? 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse'
+          : 'w-2 h-2 rounded-full bg-amber-400';
+        document.getElementById('liveStatus').textContent = state.isPlaying ? 'LIVE' : 'PAUSE';
+        startAnimationLoop();
+      });
+
+      // Rejouer depuis le début
+      document.getElementById('btnReplay').addEventListener('click', () => {
+        state.frame = 0;
+        if (!state.isPlaying) {
+          state.isPlaying = true;
+          document.getElementById('iconPause').classList.remove('hidden');
+          document.getElementById('iconPlay').classList.add('hidden');
+          document.getElementById('liveDot').className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+          document.getElementById('liveStatus').textContent = 'LIVE';
+        }
+        startAnimationLoop();
+      });
+
+      // Vues Standard / TikTok 9:16
+      document.getElementById('btnViewStandard').addEventListener('click', () => setViewMode('standard'));
+      document.getElementById('btnViewTiktok').addEventListener('click', () => setViewMode('tiktok'));
+
+      // Onglets Aperçu / Code Python
+      document.getElementById('tabPreview').addEventListener('click', () => setActiveTab('preview'));
+      document.getElementById('tabCode').addEventListener('click', () => setActiveTab('code'));
+
+      // Boutons Copier & Télécharger
+      document.getElementById('btnHeaderCopy').addEventListener('click', copyPythonScript);
+      document.getElementById('btnCodeCopy').addEventListener('click', copyPythonScript);
+      document.getElementById('btnHeaderDownload').addEventListener('click', downloadPythonScript);
+      document.getElementById('btnCodeDownload').addEventListener('click', downloadPythonScript);
+
+      // Sélecteur de durée vidéo (5s, 8s, 10s, 15s)
+      document.querySelectorAll('.dur-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (state.isRecordingVideo) return;
+          state.videoDurationSec = parseInt(btn.getAttribute('data-duration'), 10);
+          document.querySelectorAll('.dur-btn').forEach(b => {
+            const isActive = parseInt(b.getAttribute('data-duration'), 10) === state.videoDurationSec;
+            b.className = isActive
+              ? 'dur-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-violet-600 text-white shadow transition'
+              : 'dur-btn px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-400 hover:text-white transition';
+          });
+        });
+      });
+
+      // Boutons Export Vidéo & Annuler
+      document.getElementById('btnDownloadVideo').addEventListener('click', startVideoExport);
+      document.getElementById('btnCancelVideo').addEventListener('click', cancelVideoExport);
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
